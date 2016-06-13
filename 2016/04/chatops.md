@@ -1,4 +1,4 @@
-# ChatOps - Um review histórico e utilização daqui pra frente.
+# ChatOps - passado, presente e futuro.
 
 ChatOps surgiu nos últimos anos como um modelo colaborativo no qual pessoas e ferramentas são conectadas, o que permite uma melhor interação entre os times dentro do ambiente como um todo.
 
