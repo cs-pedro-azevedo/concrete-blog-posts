@@ -1,36 +1,29 @@
 Clusterizando RabbitMQ com Docker Compose
 =========================================
-A idéia
+A ideia
 -------
-Olá, vamos falar sobre [RabbitMQ](http://www.rabbitmq.com/)? O [RabbitMQ](http://www.rabbitmq.com/) é um servidor de mensagens feito especialmente para trabalhar com [Advanced Message Queuing Protocol(AMQP)](https://en.wikipedia.org/wiki/Advanced_Message_Queuing_Protocol), um protocolo de comunicação em rede que permite que aplicações se comuniquem.
-Sem a utilização de um middleware de mensagens, a integração de sistemas fica muito cara e complexa. O [AMQP](https://en.wikipedia.org/wiki/Advanced_Message_Queuing_Protocol) torna a integração entre vários sistemas diferentes possível e também permite que diferentes produtos que implementem este mesmo protocolo possam trocar informações e isso torna o [AMQP](https://en.wikipedia.org/wiki/Advanced_Message_Queuing_Protocol) um dos pioneiros na evolução de mensageria.
+Olá, vamos falar sobre [RabbitMQ](http://www.rabbitmq.com/)? O RabbitMQ é um servidor de mensagens feito especialmente para trabalhar com [Advanced Message Queuing Protocol(AMQP)](https://en.wikipedia.org/wiki/Advanced_Message_Queuing_Protocol), um protocolo de comunicação em rede que permite que aplicações se comuniquem. Aqui no blog da Concrete já falamos um pouco sobre conceitos RabbitMQ, [em um post que você pode ver aqui](http://www.concretesolutions.com.br/2012/01/26/rabbitmq-conceitos-basicos/).
+Com a utilização de um middleware para controle de mensageria a integração de sistemas fica geralmente mais barata e menos complexa. O AMQP torna a integração entre vários sistemas diferentes possível e também permite que diferentes produtos, que implementam este mesmo protocolo, possam trocar informações, o que torna o AMQP um dos pioneiros na evolução dos sistemas de troca de mensagem.
 
-Aqui vamos utilizar [Docker Compose](https://docs.docker.com/compose/) para "subir" 4 instâncias do [RabbitMQ](http://www.rabbitmq.com/) junto com o [HAProxy](http://www.haproxy.org/), um [Load Balancer](https://www.nginx.com/resources/glossary/load-balancing/) para distribuir, eficientemente, o trágefo entre os nós do [RabbitMQ](http://www.rabbitmq.com/).
+Aqui vamos utilizar [Docker-Compose](https://docs.docker.com/compose/) para "subir" quatro instâncias do RabbitMQ junto com o [HAProxy](http://www.haproxy.org/), um [Load Balancer](https://www.nginx.com/resources/glossary/load-balancing/) para distribuir, eficientemente, o tráfego entre os nós do RabbitMQ.
 
 ![Rabbit_cluster_setup](imagens/rabbit-cluster-setup.png)
 
-A idéia é o [HAProxy](http://www.haproxy.org/) receber uma publicação de alguma fila, de alguma exchange e redirecionar para o [RabbitMQ](http://www.rabbitmq.com/), espelhando os dados nos outros nós e caso algum deles falhe, temos os dados nos outros e o próprio [RabbitMQ](http://www.rabbitmq.com/) escolhe outro nó para ser o novo "master".
+A ideia é que o HAProxy receba uma publicação de alguma fila, de alguma exchange e redirecione para um dos nós do RabbitMQ. O cluster estaria então replicando os dados em todos os nós e caso algum deles falhe, temos os dados nos demais e o próprio RabbitMQ escolhe outro nó para ser o novo "master".
 
 Mão na massa
 ------------
 
-Vamos utilizar docker e para funcionar é necessário o docker instalado. [Segue o tutorial](https://docs.docker.com/engine/installation/), verifique qual SO está sendo utilizado e seja feliz. :smile:
+Vamos utilizar Docker para subir nossas instâncias de RabbitMQ, lembra? Para que funcione é preciso ter o Docker já instalado. [Aqui está o tutorial](https://docs.docker.com/engine/installation/), verifique qual SO está usando e seja feliz. :smile:
 
-É necessário a instalação do docker-compose também. Para instalar é um pouco mais simples que o docker em si. Primeiro, mude para root: `sudo su` :punch:.
-Agora digite:
-```
-curl -L https://github.com/docker/compose/releases/download/1.8.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
-```
-e depois de permissão para o docker-compose
-```
-chmod +x /usr/local/bin/docker-compose
-```
+É necessária a instalação do Docker-Compose também. Para instalar é um pouco mais simples que o Docker em si. Nesse caso, você pode seguir [esse tutorial](https://docs.docker.com/compose/install/).
+
 Com tudo instalado, vamos começar a destruir o teclado.  :musical_keyboard:
 
 Vamos começar criando nosso script de subida dos nossos docker's. Crie um arquivo chamado docker-compose.yml: `vim docker-compose.yml`
 Agora copie e cole o código abaixo no seu arquivo:
 
-```yml
+```
 version: '2'
 services:
   rabbitmq1:
@@ -116,47 +109,48 @@ services:
       - rabbitmq3:rabbitmq3
       - rabbitmq4:rabbitmq4
 ```
+Parece complicado, mas eu juro, não é! Vamos dar uma olhada em cada um dos parâmetros.
 
-**version: '2'**  :arrow_right: Com isso ja trabalharemos com as novas funcionalidades do docker-compose.
+* **version: '2'**  :arrow_right: Com isso já trabalharemos com as funcionalidades da versão mais recente do docker-compose.
 
-**services:** :arrow_right: Aqui vamos setar todos os serviços que iremos utilizar, todos os docker que irão subir para que nossa aplicação funcione.
+* **services:** :arrow_right: Aqui vamos listar todos os serviços que vamos utilizar, todos os docker que vão subir para que nossa aplicação funcione.
 
-**rabbitmq1:** :arrow_right: Nome que daremos para os nossos serviços do [RabbitMQ](http://www.rabbitmq.com/).
+* **rabbitmq1:** :arrow_right: Nome que daremos para os nossos serviços do [RabbitMQ](http://www.rabbitmq.com/).
 
-**image: rabbitmq:3-management** :arrow_right: Esta é a imagem que usaremos para nosso [RabbitMQ](http://www.rabbitmq.com/).
+* **image: rabbitmq:3-management** :arrow_right: Nome da imagem que usaremos para nosso [RabbitMQ](http://www.rabbitmq.com/).
 
-**container_name: rabbitmq1** :arrow_right: Vamos dar nomes para nossos containers para ficar mais fácil administrá-los.
+* **container_name: rabbitmq1** :arrow_right: Vamos dar nomes para nossos containers para ficar mais fácil administrá-los.
 
-**hostname: rabbitmq1** :arrow_right: Vamos colocar o nome dos nossos hosts, isso facilitará e muito a nossa clusterização pois sempre que utilizar um `docker exec` os nomes internos dos conteiners serão os mesmos.
+* **hostname: rabbitmq1** :arrow_right: Vamos colocar o nome dos nossos hosts, isso facilitará e muito a nossa clusterização, pois sempre que utilizar um `docker exec` os nomes internos dos conteiners serão os mesmos.
 
-**ports: - "8080:15672"** :arrow_right: Com isto poderemos verificar, através do nosso browser, se nosso [RabbitMQ](http://www.rabbitmq.com/) está funcionando: `localhost:8080`.
+* **ports: - "8080:15672"** :arrow_right: Com isto poderemos verificar, por meio do nosso browser, se nosso [RabbitMQ](http://www.rabbitmq.com/) está funcionando: `localhost:8080`.
 
-**network_mode: "bridge"** :arrow_right: Para que nosso cluster funcione, precisamos que todos os nós estejam na mesma "rede", neste caso na `bridge`.
+* **network_mode: "bridge"** :arrow_right: Para que nosso cluster funcione, precisamos que todos os nós estejam na mesma "rede", neste caso na `bridge`.
 
-**volumes: - $PWD/storage/rabbitmq1:/var/lib/rabbitmq** :arrow_right: Criação dos volumes que iremos utilizar.
+* **volumes: - $PWD/storage/rabbitmq1:/var/lib/rabbitmq** :arrow_right: Criação dos volumes que iremos utilizar.
 
-**environment:** :arrow_right: Aqui vamos definir nossas variáveis de ambiente, com o [Docker Compose](https://docs.docker.com/compose/) fica muito mais fácil.
+* **environment:** :arrow_right: Aqui vamos definir nossas variáveis de ambiente utilizadas por cada um dos serviços.
 
-**- RABBITMQ_ERLANG_COOKIE=This_is_my_secret_phrase** :arrow_right: Para utilizar o [RabbitMQ](http://www.rabbitmq.com/), precisamos definir um Erlang Cookie para cada nós se comunicar entre si.
+* **- RABBITMQ_ERLANG_COOKIE=This_is_my_secret_phrase** :arrow_right: Para utilizar o [RabbitMQ](http://www.rabbitmq.com/), precisamos definir um Erlang Cookie para cada nó se comunicar entre si.
 
-**- RABBITMQ_DEFAULT_USER=mqadmin** :arrow_right: Definimos um usuário para nosso nó.
+* **- RABBITMQ_DEFAULT_USER=mqadmin** :arrow_right: Definimos um usuário para nosso nó.
 
-**- RABBITMQ_DEFAULT_PASS=Admin123XX_** :arrow_right: Definimos uma senha para nosso usuário.
+* **- RABBITMQ_DEFAULT_PASS=Admin123XX_** :arrow_right: Definimos uma senha para nosso usuário.
 
-**- CLUSTERED=true** :arrow_right: Isto é apenas para definir que rodaremos em modo cluster.
+* **- CLUSTERED=true** :arrow_right: Isto é apenas para definir que rodaremos em modo cluster.
 
-**- links:** :arrow_right: Com este parâmetro definimos todos os links que nossa aplicação vai fazer.
+* **- links:** :arrow_right: Com este parâmetro definimos todos os links dos nossos serviços com demais serviços da stack.
 
-:point_right: As configurações do [HAProxy](http://www.haproxy.org/) são as mesmas que o [RabbitMQ](http://www.rabbitmq.com/) no docker-compose.
+:point_right: As configurações do HAProxy são as mesmas que o RabbitMQ no Docker-Compose.
 
-Agora vamos preparar nossa imagem do [HAProxy](http://www.haproxy.org/), poderiamos utilizar a default mas queremos e precisamos alterar o arquivo de configuração dele para atender as nossas necessidades.
+Agora vamos preparar nossa imagem do HAProxy, poderiamos utilizar a default mas precisamos alterar o arquivo de configuração para atender as nossas necessidades.
 
-Primeiro vamos criar um Dockerfile para fazer uma imagem do [HAProxy](http://www.haproxy.org/) que atenda os nossos requisitos: `vim Dockerfile`
+Primeiro vamos criar um Dockerfile para fazer uma imagem do HAProxy que atenda os nossos requisitos: `vim Dockerfile`
 
 Agora cole no Dockerfile os comandos abaixo:
 
-```bash
- FROM haproxy:1.6
+```
+FROM haproxy:1.6
 
  ENV HAPROXY_USER haproxy
 
@@ -168,13 +162,13 @@ Agora cole no Dockerfile os comandos abaixo:
  COPY haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
 
  CMD ["haproxy", "-db", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
-```
+ ```
 
-Com esse Dockerfile vai ser criado uma imagem com um usuário haproxy e ja vai copiar nosso arquivo de configuração para dentro dela, ja deixando ela pronta para uso.
+Com esse Dockerfile será criada uma imagem com um usuário haproxy e o nosso arquivo de configuração já será copiado para dentro dela, deixando-a pronta para uso.
 
 No mesmo diretório, vamos criar um arquivo chamado `haproxy.cfg` com o seguinte conteúdo:
 
-```bash
+```
 global
  	  log 127.0.0.1	local0 info
     chroot /var/lib/haproxy
@@ -190,7 +184,6 @@ listen stats
     timeout client 10000
     timeout connect 10000
     timeout server 30000
-    #``stats hide-version
     stats auth guest:guest
 
 listen rabbitmq-tcp
@@ -207,9 +200,9 @@ listen rabbitmq-tcp
     server  rabbitmq4 rabbitmq4:5672 check inter 5s rise 2 fall 5
 ```
 
-Essas configurações balancearão nossos nós, checando em um intervalo de 5 segundos se os nós estão online ou não. roundrobin é um algoritmo simples de agendamento de processos, é um mecanismo que equilibra a carga local e distribui entre os nós do cluster. Nossos nós estarão sendo ouvidos e checados pela porta 5672, que é a porta padrão de comunicação TCP do [RabbitMQ](http://www.rabbitmq.com/).
+Essas configurações vão permitir o balanceamento dos nossos nós, checando, em um intervalo de 5 segundos, se estão online ou não. Roundrobin é um algoritmo simples de escalonamento, é um mecanismo que equilibra a carga local e distribui entre os nós do cluster. Nossos nós estarão sendo ouvidos e checados pela porta 5672, que é a porta padrão de comunicação TCP do RabbitMQ.
 
-Pronto :exclamation:, ja criamos os arquivos de configuração  :clap:. Agora vamos fazer o build da nossa nova imagem do [HAProxy](http://www.haproxy.org/). No mesmo diretório que criamos o Dockerfile e o haproxy.cfg, digite:
+Pronto :exclamation:, já criamos os arquivos de configuração  :clap:. Agora vamos fazer o build da nossa nova imagem do HAProxy. No mesmo diretório que criamos o Dockerfile e o haproxy.cfg, digite:
 
 `docker build -t haproxy:1.6 .`
 
@@ -217,9 +210,9 @@ O processo deverá ser algo parecido com isso:
 
 ![build_imagem_haproxy](imagens/build_imagem_haproxy.png)
 
-Agora vamos juntar tudo isso :scream:. Calma que tudo vai dar certo  :sweat_smile:. Vamos criar um shell script bem básico para subir tudo de uma vez :heart_eyes:. Nesse mesmo diretório que criamos os outros arquivos, vamos criar um arquivo(prometo que é o último :pray:) com o nome de start_all.sh: `vim start_all.sh` e cole o código abaixo:
+Agora vamos juntar tudo isso :scream:. Calma que tudo vai dar certo  :sweat_smile:, eu prometo. Vamos criar um shell script bem básico para subir tudo de uma vez :heart_eyes:. Nesse mesmo diretório que criamos os outros arquivos, vamos criar um arquivo (prometo que é o último :pray:) com o nome de start_all.sh: `vim start_all.sh` e cole o código abaixo:
 
-```bash
+```
 #!/bin/bash
 # "Bruno Luis Cardoso Novo <bruno.novo@concrete.com.br>"
 # Script to manage the containers execution
@@ -242,9 +235,9 @@ docker exec -ti rabbitmq4 bash -c "$JOIN_RABBIT4_RABBIT1"
 docker exec -ti rabbitmq1 bash -c "$OPTIONAL_COMMAND"
 ```
 
-Como estamos utilizando docker-compose fica muito maisl fácil de "subir" um container, ele verifica se ja tem algum rodando e o mata com `docker-compose down`, depois, em modo background(`-d`), ele sobe todos os nossos serviços, um por um. Foi colocado um sleep de 15 segundos para dar tempo de todos eles subirem e ,depois ser feita a ligação entre eles, executar, dentro de cada um dos nossos containers do [RabbitMQ](http://www.rabbitmq.com/), os comandos para os nós se juntarem ao cluster.Logo após isso foi colocado um OPTIONAL_COMMAND para definirmos uma política para nosso cluster.
+Como estamos utilizando Docker-Compose fica muito mais fácil de "subir" um container. Ele verifica se essa stack já está em execução e termina a mesma caso seja necessário (`docker-compose down`), depois, em modo background(`-d`), ele sobe todos os nossos serviços, um por um. Foi colocado um sleep de 15 segundos para dar tempo de todos eles subirem e, depois da ligação entre eles, executar, dentro de cada um dos nossos containers do RabbitMQ, os comandos para os nós se juntarem ao cluster. Logo depois disso foi colocado um OPTIONAL_COMMAND para definirmos uma política para nosso cluster.
 
-:warning: No caso da política, foi definido que o cluster funcionará em modo mirror, todos os nós terão as mesmas informações. Dependendo do tipo de cluster que sua aplicação necessite, o tipo de política pode ser alterado sem problemas.  :grin:
+:warning: No caso da política, foi definido que o cluster funcionará em modo mirror, todos os nós terão as mesmas informações. Dependendo do tipo de cluster que sua aplicação necessite, o tipo de política pode ser alterada sem problemas.  :grin:
 
 Dê permissão à ele: `chmod +x start_all.sh`
 
@@ -258,40 +251,40 @@ Para verificarmos se tudo subiu como planejado, vamos digitar: `docker ps`
 
 ![docker_ps](imagens/docker_ps.png)
 
-Podemos abrir o browser e digitar: `localhost:8080`, por exemplo, e veremos a tela de login do [RabbitMQ](http://www.rabbitmq.com/), digite o usuário e a senha que configuramos e Voalá:
+Podemos abrir o browser e digitar: `localhost:8080`, por exemplo, e veremos a tela de login do [RabbitMQ](http://www.rabbitmq.com/). Digite o usuário e a senha que configuramos e Voilá:
 
 ![rabbit_admin_page](imagens/rabbit_admin_page.png)
 
-Aleluia irmãos  :raised_hands:! Tudo funcionando a pleno vapor, mas e se tivermos algum problema em algum dos nós? E se algum deles cair? Vamos fazer um teste  :smiling_imp:, vamos parar um dos nós e verificar como o [RabbitMQ](http://www.rabbitmq.com/) vai se comportar. Volte para o terminal e digite: `docker stop rabbitmq1`
+Aleluia irmãos  :raised_hands:! Tudo funcionando a pleno vapor, mas e se tivermos algum problema em algum dos nós? E se algum deles cair? Vamos fazer um teste  :smiling_imp:. Vamos parar um dos nós e verificar como o RabbitMQ vai se comportar. Volte para o terminal e digite: `docker stop rabbitmq1`
 
-Quando voltamos para o browser, não conseguimos mais ver a página do [RabbitMQ](http://www.rabbitmq.com/) porquê paramos ele. Ao invés de utilizar a porta `8080`, vamos alterar para `8081` que é a porta do `rabbitmq2` que configuramos no docker-compose.
+Quando voltamos para o browser, não conseguimos mais ver a página do RabbitMQ porque paramos ele. Ao invés de utilizar a porta `8080`, vamos alterar para `8081` que é a porta do `rabbitmq2` que configuramos no docker-compose.
 
 ![rabbit_admin_page_rabbitmq1_stopped](imagens/rabbit_admin_page_rabbitmq1_stopped.png)
 
-Podemos verificar que o `rabbitmq1` que paramos está off mas o próprio [RabbitMQ](http://www.rabbitmq.com/) ja verificou que ele está off e já promoveu um novo nó para ser nosso "master" e continuarem seu funcionamento.
+Podemos verificar que o `rabbitmq1` que paramos está off mas o próprio RabbitMQ já verificou isso e já promoveu um novo nó para ser nosso "master" e continuarem seu funcionamento.
 
-Para retornar o `rabbitmq1` de volta das cinzas é só digitar: `docker start rabbitmq1` e pronto. Tudo de volta a normalidade.
+Para retornar o `rabbitmq1` de volta das cinzas é só digitar: `docker start rabbitmq1` e pronto. Tudo de volta à normalidade.
 
-Uma outra maneira de ficarmos de olho :eyes: nos rabbit's é utilizar o painel do [HAProxy](http://www.haproxy.org/): `localhost:20000`
+Uma outra maneira de ficarmos de olho :eyes: nos Rabbit's é utilizar o painel do HAProxy: `localhost:20000`
 
-![HAProxy_admin_page](HAProxy_admin_page.png)
+![HAProxy_admin_page](imagens/HAProxy_admin_page.png)
 
 Link's interessantes
 -----------
 
-Bom pessoal, é isso. Essa foi uma maneira mais simples de subirmos um [RabbitMQ](http://www.rabbitmq.com/) e começarmos a utilizá-lo nas nossas futuras aplicações. Se quiser se aprofundar ainda mais no assunto existem vários link's bem interessantes e que darão uma visão bem mais técnica de sua utilização.
+Bom pessoal, é isso. Essa foi uma maneira mais simples de subirmos um RabbitMQ e começarmos a utilizá-lo nas nossas futuras aplicações. Se quiser se aprofundar ainda mais no assunto existem vários links bem interessantes e que darão uma visão bem mais técnica de sua utilização.
 
-[https://www.rabbitmq.com/](https://www.rabbitmq.com/)
+[RabbitMQ - Site Oficial](https://www.rabbitmq.com/)
 
-[http://www.concretesolutions.com.br/2012/01/26/rabbitmq-conceitos-basicos/](http://www.concretesolutions.com.br/2012/01/26/rabbitmq-conceitos-basicos/)
+[Introducao ao AMQP com Rabbitmq](http://www.devmedia.com.br/introducao-ao-amqp-com-rabbitmq/33036)
 
-[http://www.devmedia.com.br/introducao-ao-amqp-com-rabbitmq/33036](http://www.devmedia.com.br/introducao-ao-amqp-com-rabbitmq/33036)
+[Por que utilizar filas? Implementação com RabbitMq](http://www.pognao.com.br/2013/04/rabbitmq.html)
 
-[http://www.pognao.com.br/2013/04/rabbitmq.html](http://www.pognao.com.br/2013/04/rabbitmq.html)
+[O que é RabbitMQ?](https://www.portalgsti.com.br/rabbitmq/sobre/)
 
-[https://www.portalgsti.com.br/rabbitmq/sobre/](https://www.portalgsti.com.br/rabbitmq/sobre/)
+Obrigado pelo tempo que disponibilizou para ler este artigo e qualquer dúvida é só chamar. Gostaria de agradecer ao Wesley Silva, Pedro Azevedo e o Kaio Kardamone que me ajudaram muito, esse post é de vocês também.
 
-Agradecimento
--------
+Ficou alguma dúvida ou tem algum comentário a fazer? Aproveite os campos abaixo. 
 
-Obrigado pelo tempo que disponibilizou para ler este artigo e qualquer dúvida é só chamar.
+--
+Quer trabalhar com DevOps em uma empresa verdadeiramente ágil? [Acesse aqui](http://conteudo.concretesolutions.com.br/trabalhe-conosco-concrete-solutions). Até a próxima!
